@@ -74,6 +74,7 @@ def iniciar_sesion():
         return response, 403
     return response
 
+# publicaciones
 @app.route('/obtener_publicaciones/<usrid>', methods=['GET'])
 def get_publicaciones(usrid):
     response = {}
@@ -90,10 +91,59 @@ def get_publicaciones(usrid):
             "texto": publicacion[2],
             "corazones": publicacion[3],
             "comentarios": publicacion[4],
-            "bookmark": bool(publicacion[5])
+            "bookmark": bool(publicacion[5]),
+            "es_mio": bool(publicacion[6]),
+            "fecha": publicacion[7]
         })
     cur.close()
     return response
+
+
+@app.route('/detalle_publicacion/<usrid>/<publicacion_id>', methods=['GET'])
+def get_publicacion(usrid, publicacion_id):
+    response = {}
+    response["comentarios"] = []
+
+    cur = mysql.connection.cursor()
+    cur.callproc('ARMAR_PUBLICACION', [publicacion_id, usrid])
+    rows = cur.fetchall()
+
+    response["publicacion"] = {
+        "id": rows[0][0],
+        "titulo": rows[0][5],
+        "texto": rows[0][1],
+        "likes": rows[0][9],
+        "bookmark": rows[0][7],
+        "es_mio": bool(rows[0][6]),
+        "username": rows[0][2],
+        "n_comentarios": rows[0][10],
+        "fecha": rows[0][4],
+        "user_id": rows[0][3],
+        "like_mio": bool(rows[0][6])
+    }
+
+    response["publicacion"]["comentarios"] = []
+
+    cur.close()
+
+    cur = mysql.connection.cursor()
+    cur.callproc('armar_comentarios', [publicacion_id, usrid])
+    rows = cur.fetchall()
+    for comentario in rows:
+        response["publicacion"]["comentarios"].append({
+            "comentario_id": comentario[0],
+            "usuario_id": comentario[1],
+            "username": comentario[2],
+            "texto": comentario[5],
+            "publicacion_id": comentario[3],
+            "fecha": comentario[4],
+            "likes": comentario[7],
+            "like_mio": bool(comentario[6]),
+            "es_mio": bool(comentario[5])
+        })
+    cur.close()
+    return response
+
 
 if __name__ == '__main__':
     app.run(debug=True, threaded=True, port=1000, host='0.0.0.0')
