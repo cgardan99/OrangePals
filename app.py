@@ -99,6 +99,208 @@ def get_publicaciones(usrid):
     return response
 
 
+#######################    Cambios Mosqueda    ####################################
+#Altas de publicaciones
+@app.route('/add_publicacion/', methods=['POST'])
+def crear_publicacion():
+    response = {}
+    #data = json.loads(request.data)
+    data = request.form
+    cur = mysql.connection.cursor()
+    query = ("INSERT INTO PUBLICACION (TEXTO_PUBLICACION"
+    ",USUARIO_ID,TITULO,F_PUBLICACION) VALUES ('"
+    + str(data['TEXTO_PUBLICACION']) + "', '"
+    + str(data['USUARIO_ID']) + "', '"
+    + str(data['TITULO']) + "', "
+    + "NOW()" + ");"
+    )
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    last_id = cur.lastrowid
+    response = {
+        'exito': isinstance(last_id,int),
+        'id_insertado': last_id
+    }
+    cur.close()
+    return jsonify(response)
+
+#Bajas de publicaciones
+@app.route('/delete_publicacion/<id>', methods=['GET'])
+def eliminar_publicaciones(id):
+    response = {}
+    response["publicaciones"] = []
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM PUBLICACION WHERE ID = "+str(id)+";"
+
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+
+    response = {
+        'exito':"publicacion eliminada"
+    }
+
+    cur.close()
+    return response
+
+
+#Altas de comentarios
+@app.route('/add_comentario/', methods=['POST'])
+def crear_comentario():
+    response = {}
+    data = request.form
+    cur = mysql.connection.cursor()
+    query = ("INSERT INTO COMENTARIO (TEXTO, USUARIO_ID"
+    ",PUBLICACION_ID,COMENTARIO_ID,F_PUBLICACION) VALUES ('"
+    + str(data['TEXTO']) + "', '"
+    + str(data['USUARIO_ID']) + "', '"
+    + str(data['PUBLICACION_ID']) + "', '"
+    + str(data['COMENTARIO_ID']) + "', "
+    + "NOW()" + ");"    
+    )
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    last_id = cur.lastrowid
+    response = {
+        'exito': isinstance(last_id,int),
+        'id_insertado': last_id
+    }
+    cur.close()
+    return jsonify(response)
+    
+
+#Bajas de comentarios
+@app.route('/delete_comentario/<id>', methods=['GET'])
+def eliminar_comentarios(id):
+    response = {}
+    response["comentarios"] = []
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM COMENTARIO WHERE ID = " + str(id) + ";"
+
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+
+    response = {
+        'exito':"comentario eliminado"
+    }
+
+    cur.close()
+    return response
+
+#Altas de corazon
+@app.route('/add_corazon/', methods=['POST'])
+def crear_corazon():
+    response = {}
+    data = request.form
+    cur = mysql.connection.cursor()
+
+    query =  ("INSERT INTO CORAZON (PUBLICACION_ID"
+    ", COMENTARIO_ID, USUARIO_ID, FECHA) VALUES ('"
+    + str(data['PUBLICACION_ID']) + "', '"
+    + str(data['COMENTARIO_ID']) + "', '"
+    + str(data['USUARIO_ID']) + "', "
+    + "NOW()" + ");"
+    )
+
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    last_id = cur.lastrowid
+    response = {
+        'exito': isinstance(last_id,int),
+        'id_insertado': last_id
+    }
+    cur.close()
+    return jsonify(response)
+    
+#Bajas de corazon
+@app.route('/delete_corazon/<id>', methods=['GET'])
+def elminar_corazon(id):
+    response = {}
+    response["corazones"] = []
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM CORAZON WHERE ID = " + str(id) + ";"
+
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+
+    response = {
+        'exito':"corazon eliminado"
+    }
+
+    cur.close()
+    return response
+
+##########################################################################
+
+
+########################   ACTUALIZAR PUBLICACIONES   ########################
+@app.route('/update_publicacion/<publication_id>', methods=['POST'])
+def actualizar_publicacion(publication_id):
+    response = {}
+    data = request.form
+    cur = mysql.connection.cursor()
+    query = ("UPDATE PUBLICACION SET TEXTO_PUBLICACION = '" + str(data['TEXTO_PUBLICACION']) + "', "
+    " TITULO = '" + str(data['TITULO']) +"' WHERE ID = " + str(publication_id) + ";")
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    last_id = cur.lastrowid
+    response = {
+        'exito': isinstance(last_id,int),
+        'id_insertado': last_id
+    }
+    cur.close()
+    return jsonify(response)
+
+######################## OBTENER TODAS LAS PUBLICACIONES  ########################
+@app.route('/get_publicaciones/', methods=['GET'])
+def obtener_publicaciones():
+    response = {}
+    response["publicaciones"] = []
+    cur = mysql.connection.cursor()
+    query = ("SELECT ID, TITULO, TEXTO_PUBLICACION, F_PUBLICACION, USUARIO_ID FROM PUBLICACION")
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    for publicacion in rows:
+        response["publicaciones"].append({
+            "ID": publicacion[0],
+            "TITULO": publicacion[1],
+            "TEXTO_PUBLICACION": publicacion[2],
+            "F_PUBLICACION": publicacion[3],
+            "USUARIO_ID": publicacion[4]
+        })
+    cur.close()
+    return response
+
+
+###########################    OBTENER UNA PUBLICACION EN ESPECIFICO    ###########################
+@app.route('/get_publicacion/<publication_id>', methods=['GET'])
+def obtener_publicacion(publication_id):
+    response = {}
+    response["publicaciones"] = []
+    cur = mysql.connection.cursor()
+    query = ("SELECT ID, TITULO, TEXTO_PUBLICACION, F_PUBLICACION, USUARIO_ID FROM" 
+    " PUBLICACION WHERE ID = " + str(publication_id) + ";")
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    for publicacion in rows:
+        response["publicaciones"].append({
+            "ID": publicacion[0],
+            "TITULO": publicacion[1],
+            "TEXTO_PUBLICACION": publicacion[2],
+            "F_PUBLICACION": publicacion[3],
+            "USUARIO_ID": publicacion[4]
+        })
+    cur.close()
+    return response
+
 @app.route('/detalle_publicacion/<usrid>/<publicacion_id>', methods=['GET'])
 def get_publicacion(usrid, publicacion_id):
     response = {}
