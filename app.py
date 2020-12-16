@@ -74,6 +74,7 @@ def iniciar_sesion():
         return response, 403
     return response
 
+# publicaciones
 @app.route('/obtener_publicaciones/<usrid>', methods=['GET'])
 def get_publicaciones(usrid):
     response = {}
@@ -90,22 +91,28 @@ def get_publicaciones(usrid):
             "texto": publicacion[2],
             "corazones": publicacion[3],
             "comentarios": publicacion[4],
-            "bookmark": bool(publicacion[5])
+            "bookmark": bool(publicacion[5]),
+            "es_mio": bool(publicacion[6]),
+            "fecha": publicacion[7]
         })
     cur.close()
     return response
 
+
+#######################    Cambios Mosqueda    ####################################
+#Altas de publicaciones
 @app.route('/add_publicacion/', methods=['POST'])
 def crear_publicacion():
     response = {}
+    #data = json.loads(request.data)
     data = request.form
     cur = mysql.connection.cursor()
     query = ("INSERT INTO PUBLICACION (TEXTO_PUBLICACION"
     ",USUARIO_ID,TITULO,F_PUBLICACION) VALUES ('"
     + str(data['TEXTO_PUBLICACION']) + "', '"
     + str(data['USUARIO_ID']) + "', '"
-    + str(data['TITULO']) + "', '"
-    + str(data['F_PUBLICACION']) + "');"
+    + str(data['TITULO']) + "', "
+    + "NOW()" + ");"
     )
     cur.execute(query)
     mysql.connection.commit()
@@ -117,6 +124,119 @@ def crear_publicacion():
     }
     cur.close()
     return jsonify(response)
+
+#Bajas de publicaciones
+@app.route('/delete_publicacion/<id>', methods=['GET'])
+def eliminar_publicaciones(id):
+    response = {}
+    response["publicaciones"] = []
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM PUBLICACION WHERE ID = "+str(id)+";"
+
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+
+    response = {
+        'exito':"publicacion eliminada"
+    }
+
+    cur.close()
+    return response
+
+
+#Altas de comentarios
+@app.route('/add_comentario/', methods=['POST'])
+def crear_comentario():
+    response = {}
+    data = request.form
+    cur = mysql.connection.cursor()
+    query = ("INSERT INTO COMENTARIO (TEXTO, USUARIO_ID"
+    ",PUBLICACION_ID,COMENTARIO_ID,F_PUBLICACION) VALUES ('"
+    + str(data['TEXTO']) + "', '"
+    + str(data['USUARIO_ID']) + "', '"
+    + str(data['PUBLICACION_ID']) + "', '"
+    + str(data['COMENTARIO_ID']) + "', "
+    + "NOW()" + ");"    
+    )
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    last_id = cur.lastrowid
+    response = {
+        'exito': isinstance(last_id,int),
+        'id_insertado': last_id
+    }
+    cur.close()
+    return jsonify(response)
+    
+
+#Bajas de comentarios
+@app.route('/delete_comentario/<id>', methods=['GET'])
+def eliminar_comentarios(id):
+    response = {}
+    response["comentarios"] = []
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM COMENTARIO WHERE ID = " + str(id) + ";"
+
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+
+    response = {
+        'exito':"comentario eliminado"
+    }
+
+    cur.close()
+    return response
+
+#Altas de corazon
+@app.route('/add_corazon/', methods=['POST'])
+def crear_corazon():
+    response = {}
+    data = request.form
+    cur = mysql.connection.cursor()
+
+    query =  ("INSERT INTO CORAZON (PUBLICACION_ID"
+    ", COMENTARIO_ID, USUARIO_ID, FECHA) VALUES ('"
+    + str(data['PUBLICACION_ID']) + "', '"
+    + str(data['COMENTARIO_ID']) + "', '"
+    + str(data['USUARIO_ID']) + "', "
+    + "NOW()" + ");"
+    )
+
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    last_id = cur.lastrowid
+    response = {
+        'exito': isinstance(last_id,int),
+        'id_insertado': last_id
+    }
+    cur.close()
+    return jsonify(response)
+    
+#Bajas de corazon
+@app.route('/delete_corazon/<id>', methods=['GET'])
+def elminar_corazon(id):
+    response = {}
+    response["corazones"] = []
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM CORAZON WHERE ID = " + str(id) + ";"
+
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+
+    response = {
+        'exito':"corazon eliminado"
+    }
+
+    cur.close()
+    return response
+
+##########################################################################
+
 
 ########################   ACTUALIZAR PUBLICACIONES   ########################
 @app.route('/update_publicacion/<publication_id>', methods=['POST'])
@@ -177,6 +297,51 @@ def obtener_publicacion(publication_id):
             "TEXTO_PUBLICACION": publicacion[2],
             "F_PUBLICACION": publicacion[3],
             "USUARIO_ID": publicacion[4]
+        })
+    cur.close()
+    return response
+
+@app.route('/detalle_publicacion/<usrid>/<publicacion_id>', methods=['GET'])
+def get_publicacion(usrid, publicacion_id):
+    response = {}
+    response["comentarios"] = []
+
+    cur = mysql.connection.cursor()
+    cur.callproc('ARMAR_PUBLICACION', [publicacion_id, usrid])
+    rows = cur.fetchall()
+
+    response["publicacion"] = {
+        "id": rows[0][0],
+        "titulo": rows[0][5],
+        "texto": rows[0][1],
+        "likes": rows[0][9],
+        "bookmark": rows[0][7],
+        "es_mio": bool(rows[0][6]),
+        "username": rows[0][2],
+        "n_comentarios": rows[0][10],
+        "fecha": rows[0][4],
+        "user_id": rows[0][3],
+        "like_mio": bool(rows[0][6])
+    }
+
+    response["publicacion"]["comentarios"] = []
+
+    cur.close()
+
+    cur = mysql.connection.cursor()
+    cur.callproc('armar_comentarios', [publicacion_id, usrid])
+    rows = cur.fetchall()
+    for comentario in rows:
+        response["publicacion"]["comentarios"].append({
+            "comentario_id": comentario[0],
+            "usuario_id": comentario[1],
+            "username": comentario[2],
+            "texto": comentario[5],
+            "publicacion_id": comentario[3],
+            "fecha": comentario[4],
+            "likes": comentario[7],
+            "like_mio": bool(comentario[6]),
+            "es_mio": bool(comentario[5])
         })
     cur.close()
     return response
