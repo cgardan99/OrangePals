@@ -99,6 +99,55 @@ def get_publicaciones(usrid):
     return response
 
 
+# publicaciones bookmarks
+@app.route('/bmarks/<usrid>', methods=['GET'])
+def get_publicaciones_marcadas(usrid):
+    response = {}
+    response["publicaciones"] = []
+
+    cur = mysql.connection.cursor()
+    cur.callproc('ARMAR_LISTA_PUBLICACIONES_BMARKS', [usrid])
+    rows = cur.fetchall()
+
+    for publicacion in rows:
+        response["publicaciones"].append({
+            "id": publicacion[0],
+            "titulo": publicacion[1],
+            "texto": publicacion[2],
+            "corazones": publicacion[3],
+            "comentarios": publicacion[4],
+            "bookmark": bool(publicacion[5]),
+            "es_mio": bool(publicacion[6]),
+            "fecha": publicacion[7]
+        })
+    cur.close()
+    return response
+
+
+# publicaciones mias
+@app.route('/mias/<usrid>', methods=['GET'])
+def get_mis_publicaciones(usrid):
+    response = {}
+    response["publicaciones"] = []
+
+    cur = mysql.connection.cursor()
+    cur.callproc('ARMAR_LISTA_PUBLICACIONES_MIA', [usrid])
+    rows = cur.fetchall()
+
+    for publicacion in rows:
+        response["publicaciones"].append({
+            "id": publicacion[0],
+            "titulo": publicacion[1],
+            "texto": publicacion[2],
+            "corazones": publicacion[3],
+            "comentarios": publicacion[4],
+            "bookmark": bool(publicacion[5]),
+            "es_mio": bool(publicacion[6]),
+            "fecha": publicacion[7]
+        })
+    cur.close()
+    return response
+
 #######################    Cambios Mosqueda    ####################################
 #Altas de publicaciones
 @app.route('/add_publicacion/', methods=['POST'])
@@ -214,26 +263,30 @@ def eliminar_comentarios(id):
     rows = cur.fetchall()
 
     response = {
-        'exito':"comentario eliminado"
+        'desc':"comentario eliminado"
     }
 
     cur.close()
     return response
 
 #Altas de corazon
-@app.route('/add_corazon/', methods=['POST'])
-def crear_corazon():
+@app.route('/toggle_corazon/', methods=['POST'])
+def toggle_corazon():
     response = {}
     data = request.form
     cur = mysql.connection.cursor()
 
-    query =  ("INSERT INTO CORAZON (PUBLICACION_ID"
-    ", COMENTARIO_ID, USUARIO_ID, FECHA) VALUES ('"
-    + str(data['PUBLICACION_ID']) + "', '"
-    + str(data['COMENTARIO_ID']) + "', '"
-    + str(data['USUARIO_ID']) + "', "
-    + "NOW()" + ");"
-    )
+    liked = True if data['LIKED'] == "true" else False
+
+    if not liked:
+        query =  ("INSERT INTO CORAZON (PUBLICACION_ID"
+        ", USUARIO_ID, FECHA) VALUES ('"
+        + str(data['PUBLICACION_ID']) + "', '"
+        + str(data['USUARIO_ID']) + "', "
+        + "NOW()" + ");"
+        )
+    else:
+        query = ("DELETE FROM CORAZON WHERE PUBLICACION_ID = " + str(data['PUBLICACION_ID']) + " AND USUARIO_ID = " + str(data['USUARIO_ID']) + ";")  
 
     cur.execute(query)
     mysql.connection.commit()
@@ -241,10 +294,44 @@ def crear_corazon():
     last_id = cur.lastrowid
     response = {
         'exito': isinstance(last_id,int),
-        'id_insertado': last_id
+        'id_insertado': last_id,
+        'desc': "Reacción eliminada" if liked else "Reacción enviada" 
     }
     cur.close()
     return jsonify(response)
+
+
+#Altas de corazon
+@app.route('/toggle_corazon_cm/', methods=['POST'])
+def toggle_corazon_cm():
+    response = {}
+    data = request.form
+    cur = mysql.connection.cursor()
+
+    liked = True if data['LIKED'] == "true" else False
+
+    if not liked:
+        query =  ("INSERT INTO CORAZON (COMENTARIO_ID"
+        ", USUARIO_ID, FECHA) VALUES ('"
+        + str(data['COMENTARIO_ID']) + "', '"
+        + str(data['USUARIO_ID']) + "', "
+        + "NOW()" + ");"
+        )
+    else:
+        query = ("DELETE FROM CORAZON WHERE COMENTARIO_ID = " + str(data['COMENTARIO_ID']) + " AND USUARIO_ID = " + str(data['USUARIO_ID']) + ";")  
+
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    last_id = cur.lastrowid
+    response = {
+        'exito': isinstance(last_id,int),
+        'id_insertado': last_id,
+        'desc': "Reacción eliminada" if liked else "Reacción enviada" 
+    }
+    cur.close()
+    return jsonify(response)
+
     
 #Bajas de corazon
 @app.route('/delete_corazon/<id>', methods=['GET'])
@@ -350,6 +437,26 @@ def obtener_publicacion(publication_id):
     return response
 
 
+##############################  ACTUALIZAR USUARIO  ##############################
+@app.route('/get_user/<user_id>', methods=['GET'])
+def obtener_usuario(user_id):
+    response = {}
+    data = request.form
+    cur = mysql.connection.cursor()
+    query = ("SELECT U.USERNAME, U.EMAIL, P.NOMBRE, P.ID FROM USUARIO U, PAIS P WHERE P.ID = U.PAIS AND U.ID = " + str(user_id) + ";")
+    cur.execute(query)
+    mysql.connection.commit()
+    row = cur.fetchone()
+    last_id = cur.lastrowid
+    response = {
+        'USERNAME': row[0],
+        'PAIS': row[2],
+        'EMAIL': row[1],
+        'PAIS_ID': row[3]
+    }
+    cur.close()
+    return jsonify(response)
+
 
 ##############################  ACTUALIZAR USUARIO  ##############################
 @app.route('/update_user/<user_id>', methods=['POST'])
@@ -365,7 +472,32 @@ def actualizar_usuario(user_id):
     last_id = cur.lastrowid
     response = {
         'exito': isinstance(last_id,int),
-        'usuario_actualizado': last_id
+        'usuario_actualizado': last_id,
+        'desc': "Usuario actualizado."
+    }
+    cur.close()
+    return jsonify(response)
+
+
+##############################  ACTUALIZAR USUARIO  ##############################
+@app.route('/create/', methods=['POST'])
+def crear_usuario():
+    response = {}
+    data = request.form
+    cur = mysql.connection.cursor()
+    query = ("INSERT INTO USUARIO (USERNAME, EMAIL, PAIS, PWD) VALUES ("
+        "'" + data["USERNAME"] + "',"
+        "'" + data["EMAIL"] + "',"
+        "'" + data["PAIS"] + "',"
+        " SHA2('"+ data["PWD"] +"', 512));")
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    last_id = cur.lastrowid
+    response = {
+        'exito': isinstance(last_id,int),
+        'usuario_actualizado': last_id,
+        'desc': "El usuario ha sido creado."
     }
     cur.close()
     return jsonify(response)
@@ -389,23 +521,28 @@ def eliminar_usuario(user_id):
 ###############################################################################
 
 #Altas de bookmark
-@app.route('/add_bmark/',methods=['POST'])
+@app.route('/toggle_bmark/',methods=['POST'])
 def crear_bmarks():
     data = request.form
     cur = mysql.connection.cursor()
+    marcador = True if data['MARCADO'] == "true" else False
 
-    query = ("INSERT INTO BMARK (PUBLICACION_ID,USUARIO_ID) VALUES ('"
-    + str(data['PUBLICACION_ID']) + "', '"
-    + str(data['USUARIO_ID']) + "');"
-    )
-    
+    if not marcador:
+        query = ("INSERT INTO BMARK (PUBLICACION_ID,USUARIO_ID) VALUES ('"
+        + str(data['PUBLICACION_ID']) + "', '"
+        + str(data['USUARIO_ID']) + "');"
+        )
+    else:
+        query = ("DELETE FROM BMARK WHERE PUBLICACION_ID = " + str(data['PUBLICACION_ID']) + " AND USUARIO_ID = " + str(data['USUARIO_ID']) + ";")
+
     cur.execute(query)
     mysql.connection.commit()
     rows = cur.fetchall()
     last_id = cur.lastrowid
     response = {
         'exito': isinstance(last_id,int),
-        'id_insertado': last_id
+        'id_insertado': last_id,
+        'desc': "Bookmark eliminado" if marcador else "Bookmark añadido"
     }
     cur.close()
     return jsonify(response)
@@ -442,7 +579,7 @@ def get_publicacion(usrid, publicacion_id):
         "titulo": rows[0][5],
         "texto": rows[0][1],
         "likes": rows[0][9],
-        "bookmark": rows[0][7],
+        "bookmark": bool(rows[0][7]),
         "es_mio": bool(rows[0][6]),
         "username": rows[0][2],
         "n_comentarios": rows[0][10],
@@ -466,9 +603,9 @@ def get_publicacion(usrid, publicacion_id):
             "texto": comentario[5],
             "publicacion_id": comentario[3],
             "fecha": comentario[4],
-            "likes": comentario[7],
-            "like_mio": bool(comentario[6]),
-            "es_mio": bool(comentario[5])
+            "likes": comentario[8],
+            "like_mio": bool(comentario[7]),
+            "es_mio": bool(comentario[6])
         })
     cur.close()
     return response
@@ -497,6 +634,41 @@ def publicar_comentario(pubid, usrid):
     cur.close()
     response["desc"] = "Comentario publicado con éxito"
     response["id"] = pubid
+    return response
+
+
+@app.route('/get_comentario/<cmid>', methods=['GET'])
+def get_comentario(cmid):
+    response = {}
+    cur = mysql.connection.cursor()
+
+    query = (
+        "SELECT TEXTO FROM COMENTARIO WHERE ID = " + str(cmid) + ";"
+    )
+    cur.execute(query)
+    mysql.connection.commit()
+    row = cur.fetchone()
+
+    response["texto"] = row[0]
+
+    cur.close()
+    return response
+
+
+@app.route('/update_comentario/<cmid>', methods=['POST'])
+def update_comentario(cmid):
+    response = {}
+    cur = mysql.connection.cursor()
+    data = request.form
+
+    query = (
+        "UPDATE COMENTARIO SET TEXTO = '" + data["TEXTO"] + "' WHERE ID = " + str(cmid) + ";"
+    )
+    cur.execute(query)
+    mysql.connection.commit()
+    row = cur.fetchone()
+    response["desc"] = "Comentario actualizado."
+    cur.close()
     return response
 
 
