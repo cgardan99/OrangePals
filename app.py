@@ -119,7 +119,7 @@ def get_publicacion(usrid, publicacion_id):
         "n_comentarios": rows[0][10],
         "fecha": rows[0][4],
         "user_id": rows[0][3],
-        "like_mio": bool(rows[0][6])
+        "like_mio": bool(rows[0][8])
     }
 
     response["publicacion"]["comentarios"] = []
@@ -144,6 +144,57 @@ def get_publicacion(usrid, publicacion_id):
     cur.close()
     return response
 
+
+@app.route('/publicar_comentario/<pubid>/<usrid>', methods=['POST'])
+def publicar_comentario(pubid, usrid):
+    response = {}
+    cur = mysql.connection.cursor()
+    data = request.form
+
+    query = (
+        "INSERT INTO COMENTARIO (USUARIO_ID, PUBLICACION_ID, F_PUBLICACION, TEXTO) VALUES ("
+        + str(usrid) + ","
+        + str(pubid) + ","
+        "now(),"
+        + "'" + data["texto"] + "'"
+        ");"
+    )
+    cur.execute(query)
+    mysql.connection.commit()
+
+    cur.close()
+    response["desc"] = "Comentario publicado con éxito"
+    response["id"] = pubid
+    return response
+
+
+@app.route('/publicar/<usrid>', methods=['POST'])
+def publicar(usrid):
+    response = {}
+    cur = mysql.connection.cursor()
+    data = request.form
+    query = (
+        "INSERT INTO PUBLICACION (TEXTO_PUBLICACION, USUARIO_ID, F_PUBLICACION, TITULO) VALUES ("
+        "'" + data["texto"] + "',"
+        + str(usrid) + ","
+        "now(),"
+        + "'" + data["titulo"] + "'"
+        ");"
+    )
+    cur.execute(query)
+    mysql.connection.commit()
+    last_id = cur.lastrowid
+    
+    etiquetas = data["etiquetas"].split(" ")
+    for i in etiquetas:
+        cur = mysql.connection.cursor()
+        cur.callproc('creacion_tag', [last_id, i])
+        mysql.connection.commit()
+        cur.close()
+
+    cur.close()
+    response["desc"] = "Publicado con éxito"
+    return response
 
 if __name__ == '__main__':
     app.run(debug=True, threaded=True, port=1000, host='0.0.0.0')
