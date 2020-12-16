@@ -95,5 +95,92 @@ def get_publicaciones(usrid):
     cur.close()
     return response
 
+@app.route('/add_publicacion/', methods=['POST'])
+def crear_publicacion():
+    response = {}
+    data = request.form
+    cur = mysql.connection.cursor()
+    query = ("INSERT INTO PUBLICACION (TEXTO_PUBLICACION"
+    ",USUARIO_ID,TITULO,F_PUBLICACION) VALUES ('"
+    + str(data['TEXTO_PUBLICACION']) + "', '"
+    + str(data['USUARIO_ID']) + "', '"
+    + str(data['TITULO']) + "', '"
+    + str(data['F_PUBLICACION']) + "');"
+    )
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    last_id = cur.lastrowid
+    response = {
+        'exito': isinstance(last_id,int),
+        'id_insertado': last_id
+    }
+    cur.close()
+    return jsonify(response)
+
+########################   ACTUALIZAR PUBLICACIONES   ########################
+@app.route('/update_publicacion/<publication_id>', methods=['POST'])
+def actualizar_publicacion(publication_id):
+    response = {}
+    data = request.form
+    cur = mysql.connection.cursor()
+    query = ("UPDATE PUBLICACION SET TEXTO_PUBLICACION = '" + str(data['TEXTO_PUBLICACION']) + "', "
+    " TITULO = '" + str(data['TITULO']) +"' WHERE ID = " + str(publication_id) + ";")
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    last_id = cur.lastrowid
+    response = {
+        'exito': isinstance(last_id,int),
+        'id_insertado': last_id
+    }
+    cur.close()
+    return jsonify(response)
+
+######################## OBTENER TODAS LAS PUBLICACIONES  ########################
+@app.route('/get_publicaciones/', methods=['GET'])
+def obtener_publicaciones():
+    response = {}
+    response["publicaciones"] = []
+    cur = mysql.connection.cursor()
+    query = ("SELECT ID, TITULO, TEXTO_PUBLICACION, F_PUBLICACION, USUARIO_ID FROM PUBLICACION")
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    for publicacion in rows:
+        response["publicaciones"].append({
+            "ID": publicacion[0],
+            "TITULO": publicacion[1],
+            "TEXTO_PUBLICACION": publicacion[2],
+            "F_PUBLICACION": publicacion[3],
+            "USUARIO_ID": publicacion[4]
+        })
+    cur.close()
+    return response
+
+
+###########################    OBTENER UNA PUBLICACION EN ESPECIFICO    ###########################
+@app.route('/get_publicacion/<publication_id>', methods=['GET'])
+def obtener_publicacion(publication_id):
+    response = {}
+    response["publicaciones"] = []
+    cur = mysql.connection.cursor()
+    query = ("SELECT ID, TITULO, TEXTO_PUBLICACION, F_PUBLICACION, USUARIO_ID FROM" 
+    " PUBLICACION WHERE ID = " + str(publication_id) + ";")
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    for publicacion in rows:
+        response["publicaciones"].append({
+            "ID": publicacion[0],
+            "TITULO": publicacion[1],
+            "TEXTO_PUBLICACION": publicacion[2],
+            "F_PUBLICACION": publicacion[3],
+            "USUARIO_ID": publicacion[4]
+        })
+    cur.close()
+    return response
+
+
 if __name__ == '__main__':
     app.run(debug=True, threaded=True, port=1000, host='0.0.0.0')
