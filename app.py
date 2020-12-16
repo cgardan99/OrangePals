@@ -248,12 +248,10 @@ def crear_corazon():
     
 #Bajas de corazon
 @app.route('/delete_corazon/<id>', methods=['GET'])
-def elminar_corazon(id):
+def eliminar_corazon(id):
     response = {}
-    response["corazones"] = []
     cur = mysql.connection.cursor()
     query = "DELETE FROM CORAZON WHERE ID = " + str(id) + ";"
-
     cur.execute(query)
     mysql.connection.commit()
     rows = cur.fetchall()
@@ -351,6 +349,85 @@ def obtener_publicacion(publication_id):
     cur.close()
     return response
 
+
+
+##############################  ACTUALIZAR USUARIO  ##############################
+@app.route('/update_user/<user_id>', methods=['POST'])
+def actualizar_usuario(user_id):
+    response = {}
+    data = request.form
+    cur = mysql.connection.cursor()
+    query = ("UPDATE USUARIO SET USERNAME = '" + str(data['USERNAME']) + "', "
+    " EMAIL = '" + str(data['EMAIL']) +"', PAIS = " + str(data['PAIS']) + " WHERE ID = " + str(user_id) + ";")
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    last_id = cur.lastrowid
+    response = {
+        'exito': isinstance(last_id,int),
+        'usuario_actualizado': last_id
+    }
+    cur.close()
+    return jsonify(response)
+
+
+##############################  ELIMINAR USUARIO  ##############################
+@app.route('/delete_user/<user_id>', methods=['GET'])
+def eliminar_usuario(user_id):
+    response = {}
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM USUARIO WHERE ID = " + str(user_id) + ";"
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    response = {
+        'exito':"usuario eliminado"
+    }
+
+    cur.close()
+    return response
+###############################################################################
+
+#Altas de bookmark
+@app.route('/add_bmark/',methods=['POST'])
+def crear_bmarks():
+    data = request.form
+    cur = mysql.connection.cursor()
+
+    query = ("INSERT INTO BMARK (PUBLICACION_ID,USUARIO_ID) VALUES ('"
+    + str(data['PUBLICACION_ID']) + "', '"
+    + str(data['USUARIO_ID']) + "');"
+    )
+    
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    last_id = cur.lastrowid
+    response = {
+        'exito': isinstance(last_id,int),
+        'id_insertado': last_id
+    }
+    cur.close()
+    return jsonify(response)
+
+#Bajas de bmark
+@app.route('/delete_bmark/<id>',methods=['GET'])
+def eleminar_bmark(id):
+    response = {}
+    response["bmarks"] = []
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM BMARK WHERE ID = " + str(id) + ";"
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    response = {
+        'exito':"bmark eliminado"
+    }
+    cur.close()
+    return response
+
+
+
 @app.route('/detalle_publicacion/<usrid>/<publicacion_id>', methods=['GET'])
 def get_publicacion(usrid, publicacion_id):
     response = {}
@@ -395,6 +472,9 @@ def get_publicacion(usrid, publicacion_id):
         })
     cur.close()
     return response
+
+
+
 
 
 @app.route('/publicar_comentario/<pubid>/<usrid>', methods=['POST'])
