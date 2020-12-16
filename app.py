@@ -130,18 +130,48 @@ def crear_publicacion():
 def eliminar_publicaciones(id):
     response = {}
     response["publicaciones"] = []
-    cur = mysql.connection.cursor()
-    query = "DELETE FROM PUBLICACION WHERE ID = "+str(id)+";"
 
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM TAG_PUBLICACION WHERE PUBLICACION_ID = "+str(id)+";"
     cur.execute(query)
     mysql.connection.commit()
     rows = cur.fetchall()
+    cur.close()
+
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM COMENTARIO WHERE PUBLICACION_ID = "+str(id)+";"
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    cur.close()
+
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM CORAZON WHERE PUBLICACION_ID = "+str(id)+";"
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    cur.close()
+
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM BMARK WHERE PUBLICACION_ID = "+str(id)+";"
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    cur.close()
+
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM PUBLICACION WHERE ID = "+str(id)+";"
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    cur.close()
+
 
     response = {
-        'exito':"publicacion eliminada"
+        'desc':"publicacion eliminada"
     }
 
-    cur.close()
+    
     return response
 
 
@@ -243,6 +273,7 @@ def elminar_corazon(id):
 def actualizar_publicacion(publication_id):
     response = {}
     data = request.form
+
     cur = mysql.connection.cursor()
     query = ("UPDATE PUBLICACION SET TEXTO_PUBLICACION = '" + str(data['TEXTO_PUBLICACION']) + "', "
     " TITULO = '" + str(data['TITULO']) +"' WHERE ID = " + str(publication_id) + ";")
@@ -250,11 +281,20 @@ def actualizar_publicacion(publication_id):
     mysql.connection.commit()
     rows = cur.fetchall()
     last_id = cur.lastrowid
+    cur.close()
+
+    etiquetas = data["ETIQUETAS"].split(" ")
+    for i in etiquetas:
+        cur = mysql.connection.cursor()
+        cur.callproc('creacion_tag', [publication_id, i])
+        mysql.connection.commit()
+        cur.close()
+
     response = {
         'exito': isinstance(last_id,int),
-        'id_insertado': last_id
+        'id_insertado': last_id,
+        'desc': "Modificacion realizada con éxito."
     }
-    cur.close()
     return jsonify(response)
 
 ######################## OBTENER TODAS LAS PUBLICACIONES  ########################
@@ -283,21 +323,31 @@ def obtener_publicaciones():
 @app.route('/get_publicacion/<publication_id>', methods=['GET'])
 def obtener_publicacion(publication_id):
     response = {}
-    response["publicaciones"] = []
     cur = mysql.connection.cursor()
     query = ("SELECT ID, TITULO, TEXTO_PUBLICACION, F_PUBLICACION, USUARIO_ID FROM" 
     " PUBLICACION WHERE ID = " + str(publication_id) + ";")
     cur.execute(query)
     mysql.connection.commit()
+    publicacion = cur.fetchone()
+    response["publicacion"] = {
+        "ID": publicacion[0],
+        "TITULO": publicacion[1],
+        "TEXTO_PUBLICACION": publicacion[2],
+        "F_PUBLICACION": publicacion[3],
+        "USUARIO_ID": publicacion[4]
+    }
+    cur.close()
+
+    cur = mysql.connection.cursor()
+    query = ("SELECT t.nombre FROM" 
+    " tag t, tag_publicacion tg WHERE tg.publicacion_ID = " + str(publication_id) +
+    " and tg.tag_id = t.id;")
+    cur.execute(query)
+    mysql.connection.commit()
     rows = cur.fetchall()
-    for publicacion in rows:
-        response["publicaciones"].append({
-            "ID": publicacion[0],
-            "TITULO": publicacion[1],
-            "TEXTO_PUBLICACION": publicacion[2],
-            "F_PUBLICACION": publicacion[3],
-            "USUARIO_ID": publicacion[4]
-        })
+    response["publicacion"]["TAGS"] = ""
+    for tag in rows:
+        response["publicacion"]["TAGS"] += (tag[0] + " ")
     cur.close()
     return response
 
