@@ -367,15 +367,12 @@ def eleminar_bmark(id):
     response["bmarks"] = []
     cur = mysql.connection.cursor()
     query = "DELETE FROM BMARK WHERE ID = " + str(id) + ";"
-
     cur.execute(query)
     mysql.connection.commit()
     rows = cur.fetchall()
-
     response = {
         'exito':"bmark eliminado"
     }
-
     cur.close()
     return response
 
