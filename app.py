@@ -255,9 +255,16 @@ def crear_comentario():
 def eliminar_comentarios(id):
     response = {}
     response["comentarios"] = []
+    
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM CORAZON WHERE comentario_id = "+str(id)+";"
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    cur.close()
+
     cur = mysql.connection.cursor()
     query = "DELETE FROM COMENTARIO WHERE ID = " + str(id) + ";"
-
     cur.execute(query)
     mysql.connection.commit()
     rows = cur.fetchall()
@@ -507,13 +514,49 @@ def crear_usuario():
 @app.route('/delete_user/<user_id>', methods=['GET'])
 def eliminar_usuario(user_id):
     response = {}
+
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM comentario WHERE usuario_id = "+str(user_id)+";"
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    cur.close()
+
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM bmark WHERE USUARIO_ID = "+str(user_id)+";"
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    cur.close()
+
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM CORAZON WHERE usuario_id = "+str(user_id)+";"
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    cur.close()
+
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM TAG_PUBLICACION WHERE PUBLICACION_ID IN (SELECT DISTINCT ID FROM PUBLICACION WHERE USUARIO_ID = "+str(user_id)+");"
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    cur.close()
+
+    cur = mysql.connection.cursor()
+    query = "DELETE FROM PUBLICACION WHERE usuario_iD = "+str(user_id)+";"
+    cur.execute(query)
+    mysql.connection.commit()
+    rows = cur.fetchall()
+    cur.close()
+
     cur = mysql.connection.cursor()
     query = "DELETE FROM USUARIO WHERE ID = " + str(user_id) + ";"
     cur.execute(query)
     mysql.connection.commit()
     rows = cur.fetchall()
     response = {
-        'exito':"usuario eliminado"
+        'desc':"usuario eliminado."
     }
 
     cur.close()
